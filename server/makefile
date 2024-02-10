@@ -1,20 +1,21 @@
 
 CC = gcc
-CFLAGS = -Wall -pthread
+CFLAGS = -Wall
 LIBS = -lssl -lcrypto
 
-.PHONY: clean all
 
 all: server basicClient
 
+.PHONY: clean all
 
-server: server.c utils.c
-	$(CC) $(CFLAGS) -o server server.c utils.c $(LIBS)
 
-basicClient: basicClient.c utils.c
-	$(CC) $(CFLAGS) -o basicClient basicClient.c utils.c $(LIBS)
+server: server.o
+	$(CC) $(CFLAGS) -o server server.o $(LIBS)
+
+basicClient: basicClient.o
+	$(CC) $(CFLAGS) -o basicClient basicClient.o $(LIBS)
 
 
 
 clean:
-	rm -f server basicClient
+	rm -f server basicClient *.o

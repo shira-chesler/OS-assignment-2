@@ -23,7 +23,24 @@ struct HandleClientArgs {
 void error_exit(const char* msg) 
 {
     perror(msg);
+    printf("Exiting...\n");
     exit(EXIT_FAILURE);
+}
+
+// Function to check errors (values should not differ)
+void check_operation_same(int result, const char* operation_name, int check_equal_to, int ClientSocket) 
+{
+    if (result != check_equal_to) 
+    {
+        perror(operation_name);
+        if (ClientSocket != -1) 
+        {
+            char* message = "500 INTERNAL ERROR\r\n\r\n"; 
+            send_to(ClientSocket, message);
+            close(ClientSocket);
+        }
+        exit(EXIT_FAILURE);
+    }
 }
 
 // Function to check for errors in socket operations
@@ -34,7 +51,7 @@ void check_socket_operation(int result, const char* operation_name, int check_eq
         perror(operation_name);
         if (ClientSocket != -1) 
         {
-            char* message = "500 INTERNAL ERROR"; 
+            char* message = "500 INTERNAL ERROR\r\n\r\n"; 
             send_to(ClientSocket, message);
             close(ClientSocket);
         }
@@ -49,8 +66,6 @@ void handleClient(void* args)
     struct HandleClientArgs* actualArgs = (struct HandleClientArgs*)args;
     int clientSocket = *(actualArgs->clientFD);
     char* dir = *(actualArgs->rootDirectory);
-    // Print "Hello" and client details
-    printf("Hello\n");
 
     char* message;
     char** msg_ptr = &message;
@@ -68,7 +83,7 @@ void handleClient(void* args)
         {
             char* fullpath = malloc(strlen(message) + strlen(dir) + 3);
             strcpy(fullpath, dir);
-            strcat(fullpath, "/");
+            //strcat(fullpath, "/");
             strcat(fullpath, message);
             get_file(clientSocket, fullpath);
             free(fullpath);
@@ -78,7 +93,6 @@ void handleClient(void* args)
         {
             char* fullpath = malloc(strlen(message) + strlen(dir) + 3);
             strcpy(fullpath, dir);
-            strcat(fullpath, "/");
             char* path = strtok(message, "\r\n");
             strcat(fullpath, path);
             char* contents = strtok(NULL, "\r\n");
@@ -263,7 +277,7 @@ char* checkPath(int argc, char *const *argv) {
     } 
     else
     {
-        error_exit("no flag was passed");
+        error_exit("no path was passed as an argument to the server\n");
         return NULL;
     }
 }
@@ -349,7 +363,7 @@ void post_file(int clientSocket, char* fullpath, char* contents, int length)
     char* message;
     if (access(fullpath, F_OK) != -1) 
     {
-        message = "500 INTERNAL ERROR";
+        message = "500 INTERNAL ERROR\r\n\r\n";
         
         send_to(clientSocket, message);
 
@@ -360,7 +374,7 @@ void post_file(int clientSocket, char* fullpath, char* contents, int length)
     int fd = open(fullpath, O_WRONLY | O_CREAT, 0666);
     if (fd == -1) 
     {
-        message = "500 INTERNAL ERROR";
+        message = "500 INTERNAL ERROR\r\n\r\n";
         
         send_to(clientSocket, message);
         close(clientSocket);
@@ -380,7 +394,7 @@ void post_file(int clientSocket, char* fullpath, char* contents, int length)
     if (fcntl(fd, F_SETLKW, &fl) == -1) // F_SETLKW = set lock and wait
     {
         close(fd);
-        message = "500 INTERNAL ERROR";
+        message = "500 INTERNAL ERROR\r\n\r\n";
         
         send_to(clientSocket, message);
         close(clientSocket);
@@ -403,6 +417,9 @@ void post_file(int clientSocket, char* fullpath, char* contents, int length)
     }
 
     close(fd);
+    message = "200 OK\r\n\r\n";
+    send_to(clientSocket, message);
+    return;
 }
 
 //This function send the message to the client
@@ -412,10 +429,10 @@ void send_to(int clientSocket, char* message)
     uint32_t net_msg_len = htonl(msg_len);
     
     int send_result = send(clientSocket, &net_msg_len, sizeof(net_msg_len), 0);
-    check_socket_operation(send_result, "send", sizeof(net_msg_len), clientSocket);
+    check_operation_same(send_result, "send", sizeof(net_msg_len), clientSocket);
     
     send_result = send(clientSocket, message, msg_len, 0);
-    check_socket_operation(send_result, "send", msg_len, clientSocket);
+    check_operation_same(send_result, "send", msg_len, clientSocket);
 }
 
 //This function recieve the message from the client
@@ -423,14 +440,14 @@ void recieve_from(int clientSocket, char** message_ptr)
 {
     uint32_t msg_len;
     int recv_result = recv(clientSocket, &msg_len, sizeof(msg_len), 0);
-    check_socket_operation(recv_result, "recv", sizeof(msg_len), clientSocket);
+    check_operation_same(recv_result, "recv", sizeof(msg_len), clientSocket);
 
     msg_len = ntohl(msg_len);
     *(message_ptr) = malloc(msg_len + 1);
     
 
     recv_result = recv(clientSocket, *(message_ptr), msg_len, 0);
-    check_socket_operation(recv_result, "recv", msg_len, clientSocket);
+    check_operation_same(recv_result, "recv", msg_len, clientSocket);
 
     (*(message_ptr))[msg_len] = '\0';
 

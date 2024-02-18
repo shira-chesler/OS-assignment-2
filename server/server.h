@@ -7,6 +7,8 @@ void error_exit(const char* msg);
 
 void check_socket_operation(int result, const char* operation_name, int check_equal_to, int clientSocket);
 
+void check_operation_same(int result, const char* operation_name, int check_equal_to, int ClientSocket);
+
 void handleClient(void* args);
 
 void createServerSocket(int* serverSocket);

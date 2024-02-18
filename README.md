@@ -17,18 +17,18 @@
 
 - The client program accepts the following arguments:
 - `<method>`: The HTTP method to use (`POST` or `GET`).
-- `<REMOTEPATH>`: The path relative to the server's directory.
+- `<REMOTEPATH>`: The path relative to the server's directory. This should start with the server's address (must start with `http` or `https`), followed by the DNS of the server, and then the rest of the path. For example, `https://example.com/path/relative/to/server`.
 - `<PATHTOCONTENTS>`: (Only required for `POST` method) The full path to the file containing the contents to be posted.
 
 - To download a file from the server (GET request), run the client with the following command:
 
-  `./client GET /path/relative/to/server`
+  `./client GET https://example.com/path/relative/to/server`
 
   The file will be saved in the directory where the client is being run from, with the same name as it had on the server.
 
 - To upload a file to the server (POST request), run the client with the following command:
 
-  `./client POST /path/relative/to/server /full/path/to/local/file`
+  `./client POST https://example.com/path/relative/to/server /full/path/to/local/file`
 
   If a file with the same name already exists on the server, the request will result in a 500 Internal Server Error.
 

@@ -4,7 +4,9 @@
 
 void error_exit(const char *msg);
 
-void check_operation(int result, const char* operation_name, int check_equal_to);
+void check_operation_differ(int result, const char* operation_name, int check_equal_to);
+
+void check_operation_same(int result, const char* operation_name, int check_equal_to) ;
 
 void send_to(int clientSocket, char* message);
 
@@ -20,7 +22,7 @@ void get_filename(char* path, char** filename);
 
 void parse_response(char* response, char** message, char** contents);
 
-void format_request(char* method, char* path, char** request);
+void format_request(char* method, char* path, char** request, char** added_content);
 
 void sendGetRequestFile(int client, char* path, char* server_ip);
 

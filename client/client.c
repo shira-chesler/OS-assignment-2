@@ -14,7 +14,7 @@
 
 #define SERVER_PORT 8080
 #define BUFFER_SIZE 1024
-#define CWD_SIZE 1024
+#define CWD_SIZE pathconf(".", _PC_PATH_MAX)
 
 //Error handling functions
 void error_exit(const char* msg) 
@@ -23,11 +23,23 @@ void error_exit(const char* msg)
     exit(EXIT_FAILURE);
 }
 
-//Check if the result of an operation is equal to a certain value
-void check_operation(int result, const char* operation_name, int check_equal_to) 
+//Check if the result of an operation is same of a certain value (should be different)
+void check_operation_differ(int result, const char* operation_name, int check_equal_to) 
 {
     if (result == check_equal_to) 
     {
+        printf("%s not good\n", operation_name);
+        perror(operation_name);
+        exit(EXIT_FAILURE);
+    }
+}
+
+//Check if the result of an operation is different from a certain value (should be equal)
+void check_operation_same(int result, const char* operation_name, int check_equal_to) 
+{
+    if (result != check_equal_to) 
+    {
+        printf("%s not good\n", operation_name);
         perror(operation_name);
         exit(EXIT_FAILURE);
     }
@@ -47,7 +59,7 @@ void Decode_contents(char* contents, char** decoded_contents, int client)
 //This function gets the current working directory
 void get_check_cwd(char* cwd, char* path, char* server_ip) 
 {
-    if (getcwd(cwd, sizeof(cwd)) == NULL) 
+    if (getcwd(cwd, CWD_SIZE) == NULL) 
     {
         free(path);
         free(server_ip);
@@ -87,12 +99,12 @@ void send_to(int clientSocket, char* message)
 {
     uint32_t msg_len = strlen(message);
     uint32_t net_msg_len = htonl(msg_len);
-    
+
     int send_result = send(clientSocket, &net_msg_len, sizeof(net_msg_len), 0);
-    check_operation(send_result, "send", sizeof(net_msg_len));
+    check_operation_same(send_result, "send", sizeof(net_msg_len));
     
     send_result = send(clientSocket, message, msg_len, 0);
-    check_operation(send_result, "send", msg_len);
+    check_operation_same(send_result, "send", msg_len);
 }
 
 //Receives a message from the server
@@ -100,14 +112,14 @@ void recieve_from(int clientSocket, char** message_ptr)
 {
     uint32_t msg_len;
     int recv_result = recv(clientSocket, &msg_len, sizeof(msg_len), 0);
-    check_operation(recv_result, "recv", sizeof(msg_len));
+    check_operation_same(recv_result, "recv", sizeof(msg_len));
 
     msg_len = ntohl(msg_len);
     *(message_ptr) = malloc(msg_len + 1);
     
 
     recv_result = recv(clientSocket, *(message_ptr), msg_len, 0);
-    check_operation(recv_result, "recv", msg_len);
+    check_operation_same(recv_result, "recv", msg_len);
 
     (*(message_ptr))[msg_len] = '\0';
 
@@ -118,7 +130,7 @@ void recieve_from(int clientSocket, char** message_ptr)
 int openClient(char* server_ip, char* path)
 {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    check_operation(sock, "socket", -1);
+    check_operation_differ(sock, "socket", -1);
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
@@ -200,14 +212,34 @@ void parse_response(char* response, char** message, char** contents)
 }
 
 //Formats the request
-void format_request(char* method, char* path, char** request)
+void format_request(char* method, char* path, char** request, char** added_contents)
 {
-    char* double_crlf = "\r\n\r\n";
-    *request = malloc(strlen(method) + strlen(path) + strlen(double_crlf) + 2);
-    sprintf(*request, "%s %s", method, path);
-    char* tmp_request = *request;
-    sprintf(*request, "%s%s", tmp_request, double_crlf);
-    return;
+    char* crlf;
+    if (strcmp(method, "GET") == 0)
+    {
+        crlf = "\r\n\r\n";
+        *request = malloc(strlen(method) + strlen(path) + strlen(crlf) + 2);
+        sprintf(*request, "%s %s", method, path);
+        char* tmp_request = *request;
+        sprintf(*request, "%s%s", tmp_request, crlf);
+        return;
+    }
+    else // (strcmp(method, "POST") == 0)
+    {
+        crlf = "\r\n";
+        *request = malloc(strlen(method) + strlen(path) + 3 * strlen(crlf) + strlen(*added_contents) + 2);
+        sprintf(*request, "%s %s", method, path);
+        char* tmp_request = *request;
+        sprintf(*request, "%s%s", tmp_request, crlf);
+        tmp_request = *request;
+        sprintf(*request, "%s%s", tmp_request, *added_contents);
+        tmp_request = *request;
+        sprintf(*request, "%s%s", tmp_request, crlf);
+        tmp_request = *request;
+        sprintf(*request, "%s%s", tmp_request, crlf);
+        return;
+
+    }
 }
 
 //This function gets a path to a file and sends a GET request for the file
@@ -215,7 +247,7 @@ void sendGetRequestFile(int client, char* path, char* server_ip)
 {
     //Sending the request
     char* request;
-    format_request("GET", path, &request);
+    format_request("GET", path, &request, NULL);
     send_to(client, request);
     free(request);
 
@@ -238,9 +270,9 @@ void sendGetRequestFile(int client, char* path, char* server_ip)
         perror(message);
         free(server_ip);
         free(path);
-        exit(EXIT_FAILURE);
+        exit(0);
     }
-    printf("%s", message);
+    printf("%s\n", message);
     free(response);
     free(message);
 
@@ -262,7 +294,7 @@ void sendGetRequestList(int client, char* path, char* server_ip)
 {
     //Sending the request
     char* request;
-    format_request("GET", path, &request);
+    format_request("GET", path, &request, NULL);
     send_to(client, request);
     free(request);
 
@@ -285,6 +317,7 @@ void sendGetRequestList(int client, char* path, char* server_ip)
         perror(message);
         free(server_ip);
         free(path);
+        exit(0);
     }
     printf("%s", message);
     free(response);
@@ -310,7 +343,7 @@ void get_into_struct(char* list, int num_files, int client, char* cwd, char* pat
         char* file = malloc(file_len + 1);
         strcpy(file, token);
         char* request;
-        format_request("GET", file, &request);
+        format_request("GET", file, &request, NULL);
         int new_client = openClient(server_ip, path);
         send_to(new_client, request);
         free(request);
@@ -342,7 +375,7 @@ void sendListToPoll(char* list, int client, char* path, char* server_ip)
 
     //Using poll() to receive the responses
     int poll_result = poll(fds, num_files, -1);
-    check_operation(poll_result, "poll", -1);
+    check_operation_differ(poll_result, "poll", -1);
 
     for (int i = 0; i < num_files; i++)
     {
@@ -401,28 +434,32 @@ int file_handler_read(int client, char* file_path, char** file_contents, char* s
 //This function sends a POST request
 void sendPostRequest(int client, char* path, char* file_path, char* server_ip)
 {
-    //Sending the request
-    char* request;
-    format_request("POST", path, &request);
-    send_to(client, request);
-    free(request);
-
     //Reading the file
     char* file_contents;
     int file_size = file_handler_read(client, file_path, &file_contents, server_ip, path);
 
     //Encoding the file
     char* encoded_file;
-    base64_encode_string(file_contents, file_size, &encoded_file);
+    base64_encode_string(file_contents, file_size+sizeof("\r\n\r\n"), &encoded_file);
     free(file_contents);
+    
+    //Sending the request
+    char* request;
+    format_request("POST", path, &request, &encoded_file);
+    send_to(client, request);
+    free(request);
 
     //Sending the file
+    //add \r\n\r\n to the end of the file
+    strcat(encoded_file, "\r\n\r\n");
     send_to(client, encoded_file);
     free(encoded_file);
+    printf("sent file\n");
 
     //Receiving the response
     char* response;
     recieve_from(client, &response);
+    printf("response = %s\n", response);
 
     //parsing the response
     char* message;
@@ -439,8 +476,9 @@ void sendPostRequest(int client, char* path, char* file_path, char* server_ip)
         perror(message);
         free(server_ip);
         free(path);
+        exit(0);
     }
-    printf("%s", message);
+    printf("%s\n", message);
     free(response);
     free(message);
     free(contents);
@@ -480,38 +518,53 @@ void parse_path(int argc, char *argv[], char** server_ip, char** route_path)
     else {
         path += 8;
     }
-
+    char* file_path = malloc(strlen(path) + 1);
     char* token = strtok(path, "/");
     char* server_name = token;
     token = strtok(NULL, "/");
-    char* file_path = token;
+    strcpy(file_path, token);
+    while ((token = strtok(NULL, "/")) != NULL) {
+        char* tmp = file_path;
+        sprintf(file_path,"%s/%s", tmp, token);
+    }
     struct hostent *server = gethostbyname(server_name);
     if (server == NULL) {
+        free(server_ip);
+        free(route_path);
+        free(file_path);
         error_exit("No such host");
     }
     *server_ip = malloc(16);
     strcpy(*server_ip, inet_ntoa(*((struct in_addr *)server->h_addr_list[0])));
 
-    *route_path = malloc(strlen(file_path) + 1);
-    strcpy(*route_path, file_path);
+    *route_path = malloc(strlen(file_path) + 2);
+    strcpy(*route_path, "/");
+    strcpy(*(route_path)+1, file_path);
+    free(file_path);
     return;
 }
+
 
 int main(int argc, char *argv[]) {
     char* server_ip;
     char* path;
     parse_path(argc, argv, &server_ip, &path);
     int client = openClient(server_ip, path);
+    printf("path = %s\n", path);
     checkmethod(argc, argv, server_ip, path);
+    printf("method = %s\n", argv[1]);
+    printf("server_ip = %s\n", server_ip);
     char* method = argv[1];
     
-    if (strcmp(method,"GET") != 0)
+    if (strcmp(method,"GET") == 0)
     {
+        printf("method is GET\n");
         int extension = file_extension_list(path);
         if (extension == 1) {
             sendGetRequestList(client, path, server_ip);
         }
         else if (extension == 0) {
+            printf("requested a file\n");
             sendGetRequestFile(client, path, server_ip);
         }
         else { 
@@ -522,10 +575,12 @@ int main(int argc, char *argv[]) {
     }
     else // POST
     {
+        printf("method is POST\n");
         sendPostRequest(client, path, argv[3], server_ip);
     }
     free(server_ip);
     free(path);
+    close(client);
 
     return 0;
 }

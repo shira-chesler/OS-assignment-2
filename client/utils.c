@@ -60,12 +60,15 @@ int size_of_decoded_string(int length) {
 void base64_decode_string(const char *input, int length, char **output) {
     BIO *bio, *b64;
 
-    *output = (char *)malloc(length);
+    int decoded_length = size_of_decoded_string(length);
+    *output = (char *)malloc(decoded_length + 1);
     b64 = BIO_new(BIO_f_base64());
+    BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
     bio = BIO_new_mem_buf(input, length);
     bio = BIO_push(b64, bio);
 
-    BIO_read(bio, *output, length);
+    BIO_read(bio, *output, decoded_length);
+    (*output)[decoded_length] = 0;
 
     BIO_free_all(bio);
 }

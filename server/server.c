@@ -13,26 +13,36 @@
 #define SERVER_PORT 8080
 #define BUFFER_SIZE 1024
 
+// struct to pass the arguments to the process
 struct HandleClientArgs {
     int* clientFD;
     char** rootDirectory;
 };
 
+// Function to check for errors in socket operations
 void error_exit(const char* msg) 
 {
     perror(msg);
     exit(EXIT_FAILURE);
 }
 
-void check_socket_operation(int result, const char* operation_name, int check_equal_to) 
+// Function to check for errors in socket operations
+void check_socket_operation(int result, const char* operation_name, int check_equal_to, int ClientSocket) 
 {
     if (result == check_equal_to) 
     {
         perror(operation_name);
+        if (ClientSocket != -1) 
+        {
+            char* message = "500 INTERNAL ERROR"; 
+            send_to(ClientSocket, message);
+            close(ClientSocket);
+        }
         exit(EXIT_FAILURE);
     }
 }
 
+// Function to check for errors in socket operations
 void handleClient(void* args) 
 {
 
@@ -58,6 +68,7 @@ void handleClient(void* args)
         {
             char* fullpath = malloc(strlen(message) + strlen(dir) + 3);
             strcpy(fullpath, dir);
+            strcat(fullpath, "/");
             strcat(fullpath, message);
             get_file(clientSocket, fullpath);
             free(fullpath);
@@ -65,9 +76,14 @@ void handleClient(void* args)
         }
         else //(type == 'P')
         {
-            char* fullpath = strtok(message, "\r\n");
+            char* fullpath = malloc(strlen(message) + strlen(dir) + 3);
+            strcpy(fullpath, dir);
+            strcat(fullpath, "/");
+            char* path = strtok(message, "\r\n");
+            strcat(fullpath, path);
             char* contents = strtok(NULL, "\r\n");
             post_file(clientSocket, fullpath, contents, strlen(contents));
+            free(fullpath);
         }
     }
     close(clientSocket);
@@ -143,7 +159,7 @@ void createServerSocket(int* serverSocket)
 {
     int domain = AF_INET;
     *serverSocket = socket(domain, SOCK_STREAM, 0);
-    check_socket_operation(*serverSocket, "socket", -1);
+    check_socket_operation(*serverSocket, "socket", -1, -1);
 }
 
 // Sets options for the server socket and checks for any errors
@@ -151,7 +167,7 @@ void setSocketOptions(int serverSocket)
 {
     int optVal = 1;
     int setsockopt_result = setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof(optVal));
-    check_socket_operation(setsockopt_result, "setsockopt", -1);
+    check_socket_operation(setsockopt_result, "setsockopt", -1, -1);
 }
 
 // Binds the server socket to an address and starts listening for connections
@@ -159,10 +175,10 @@ void setSocketOptions(int serverSocket)
 void bindAndListen(int serverSocket, struct sockaddr_in addr) 
 {
     int bind_result = bind(serverSocket, (struct sockaddr *) &addr, sizeof(addr));
-    check_socket_operation(bind_result, "bind", -1);
+    check_socket_operation(bind_result, "bind", -1, -1);
 
     int listen_result = listen(serverSocket, 5);
-    check_socket_operation(listen_result, "listen", -1);
+    check_socket_operation(listen_result, "listen", -1, -1);
 }
 
 // Accepts incoming connections and handles them in separate threads
@@ -234,34 +250,15 @@ void openTcpServer(int argc, char *const *argv)
 }
 
 //This function get the flag from the user when you run the server
-// find the current working dir and concat the directory to the root dir
 char* checkPath(int argc, char *const *argv) {
     if (argc >= 2) 
     {
-        char cwd[1024];
-        
-        if (getcwd(cwd, sizeof(cwd)) == NULL) 
-        {
-            error_exit("getcwd error");
-        }
-
         char* path = argv[1];
-        char* formattedPath = malloc(strlen(cwd) + strlen(path) + 3);
-        if(*argv[1] != '.') strcpy(formattedPath, cwd);
-
-        if (formattedPath[strlen(formattedPath) - 1] != '/') 
-        {
-            strcat(formattedPath, "/");
-        }
-
-        strcat(formattedPath, path);
-
-        if (formattedPath[strlen(formattedPath) - 1] != '/') 
-        {
-            strcat(formattedPath, "/");
-        }
-
+        
+        char* formattedPath = malloc(strlen(path) + 1);
+        strcpy(formattedPath, path);
         return formattedPath;
+         
     
     } 
     else
@@ -271,7 +268,7 @@ char* checkPath(int argc, char *const *argv) {
     }
 }
 
-
+//This function parse the message and skip the command
 void parse_message(char** message, char type) 
 {
     if(type == 'G')
@@ -295,7 +292,7 @@ void parse_message(char** message, char type)
     }
 }
 
-
+//This function get the message type
 char get_message_type(char* message) 
 {
     if (strncmp(message, "GET ", 4) == 0) 
@@ -313,6 +310,7 @@ char get_message_type(char* message)
     }
 }
 
+//This function get the file from the server
 void get_file(int clientSocket, char* fullpath) 
 {
     // Open the file
@@ -345,6 +343,7 @@ void get_file(int clientSocket, char* fullpath)
     free(message);
 }
 
+//This function post the file to the server
 void post_file(int clientSocket, char* fullpath, char* contents, int length) 
 {
     char* message;
@@ -361,7 +360,11 @@ void post_file(int clientSocket, char* fullpath, char* contents, int length)
     int fd = open(fullpath, O_WRONLY | O_CREAT, 0666);
     if (fd == -1) 
     {
+        message = "500 INTERNAL ERROR";
+        
+        send_to(clientSocket, message);
         close(clientSocket);
+        free(fullpath);
         error_exit("open failed");
     }
 
@@ -377,7 +380,11 @@ void post_file(int clientSocket, char* fullpath, char* contents, int length)
     if (fcntl(fd, F_SETLKW, &fl) == -1) // F_SETLKW = set lock and wait
     {
         close(fd);
+        message = "500 INTERNAL ERROR";
+        
+        send_to(clientSocket, message);
         close(clientSocket);
+        free(fullpath);
         error_exit("fcntl failed");
     }
 
@@ -398,30 +405,32 @@ void post_file(int clientSocket, char* fullpath, char* contents, int length)
     close(fd);
 }
 
+//This function send the message to the client
 void send_to(int clientSocket, char* message) 
 {
     uint32_t msg_len = strlen(message);
     uint32_t net_msg_len = htonl(msg_len);
     
     int send_result = send(clientSocket, &net_msg_len, sizeof(net_msg_len), 0);
-    check_socket_operation(send_result, "send", sizeof(net_msg_len));
+    check_socket_operation(send_result, "send", sizeof(net_msg_len), clientSocket);
     
     send_result = send(clientSocket, message, msg_len, 0);
-    check_socket_operation(send_result, "send", msg_len);
+    check_socket_operation(send_result, "send", msg_len, clientSocket);
 }
 
+//This function recieve the message from the client
 void recieve_from(int clientSocket, char** message_ptr) 
 {
     uint32_t msg_len;
     int recv_result = recv(clientSocket, &msg_len, sizeof(msg_len), 0);
-    check_socket_operation(recv_result, "recv", sizeof(msg_len));
+    check_socket_operation(recv_result, "recv", sizeof(msg_len), clientSocket);
 
     msg_len = ntohl(msg_len);
     *(message_ptr) = malloc(msg_len + 1);
     
 
     recv_result = recv(clientSocket, *(message_ptr), msg_len, 0);
-    check_socket_operation(recv_result, "recv", msg_len);
+    check_socket_operation(recv_result, "recv", msg_len, clientSocket);
 
     (*(message_ptr))[msg_len] = '\0';
 

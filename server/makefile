@@ -1,7 +1,6 @@
 
 CC = gcc
 CFLAGS = -Wall
-LIBS = -lssl -lcrypto
 
 
 all: server basicClient
@@ -10,10 +9,9 @@ all: server basicClient
 
 
 server: server.o
-	$(CC) $(CFLAGS) -o server server.o $(LIBS)
-
+	$(CC) $(CFLAGS) -o server server.o
 basicClient: basicClient.o
-	$(CC) $(CFLAGS) -o basicClient basicClient.o $(LIBS)
+	$(CC) $(CFLAGS) -o basicClient basicClient.o 
 
 
 

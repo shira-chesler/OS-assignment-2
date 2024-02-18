@@ -5,7 +5,7 @@
 
 void error_exit(const char* msg);
 
-void check_socket_operation(int result, const char* operation_name, int check_equal_to);
+void check_socket_operation(int result, const char* operation_name, int check_equal_to, int clientSocket);
 
 void handleClient(void* args);
 

@@ -16,7 +16,7 @@
 ### Client Usage
 
 - The client program accepts the following arguments:
-- `<method>`: The HTTP method to use (`POST` or `GET`).
+- `<method>`: The HTTP method to use (`POST` or `GET`). Note that the method is case-sensitive.
 - `<REMOTEPATH>`: The path relative to the server's directory. This should start with the server's address (must start with `http` or `https`), followed by the DNS of the server, and then the rest of the path. For example, `https://example.com/path/relative/to/server`.
 - `<PATHTOCONTENTS>`: (Only required for `POST` method) The full path to the file containing the contents to be posted.
 

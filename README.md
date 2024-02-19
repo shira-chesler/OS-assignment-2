@@ -30,7 +30,7 @@
 
   `./client POST https://example.com/path/relative/to/server /full/path/to/local/file`
 
-  If a file with the same name already exists on the server, the request will result in a 500 Internal Server Error.
+  If a file with the same name already exists on the server, the request will result in a 500 Internal Server Error. The client should receive a response from the server (`200 OK`, `404 FILE NOT FOUND`, or `500 INTERNAL ERROR`).
 
 ### Additional Notes
 

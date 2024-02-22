@@ -103,70 +103,6 @@ void handleClient(void* args)
     close(clientSocket);
 }
 
-/**void openTcpServer(char* rootDirectory) 
-{
-    //opens a tcp server
-    int domain = AF_INET;
-    int server_socket = socket(domain, SOCK_STREAM, 0);
-    check_socket_operation(server_socket, "socket", -1);
-
-    int val = 1; // value to set the socket optval to (?)
-    int setsockopt_result = setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-    check_socket_operation(setsockopt_result, "setsockopt", -1);
-
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET; // IPv4
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // localhost
-    addr.sin_port = htons(SERVER_PORT); // port number
-    
-    // bind the port to the server socket
-    int bind_result = bind(server_socket, (struct sockaddr *) &addr, sizeof(addr));
-    check_socket_operation(bind_result, "bind", -1);
-
-    //waiting for requests
-    int listen_result = listen(server_socket, 5);
-    check_socket_operation(listen_result, "listen", -1);
-
-    printf("Server is ready to use.\n");
-    printf("Server details:\n");
-    printf("IP Address: 127.0.0.1\n");
-    printf("Port: %d\n", SERVER_PORT);
-
-    while (1) 
-    {
-        //accepting new clients
-        struct sockaddr_storage client_addr;
-        socklen_t addrLen = sizeof(client_addr);
-        
-        int clientFD = accept(server_socket, (struct sockaddr *) &client_addr, &addrLen);
-        if (clientFD == -1) {
-            perror("accept failed");
-            continue;
-        }
-
-        printf("New client accepted.\n");
-        printf("Client details:\n");
-
-        char clientIP[INET_ADDRSTRLEN]; // space to hold the IPv4 string
-        inet_ntop(AF_INET, &(((struct sockaddr_in *)&client_addr)->sin_addr), clientIP, INET_ADDRSTRLEN); // convert the IP address from binary to text
-        
-        printf("IP Address: %s\n", clientIP);
-        printf("Port: %d\n", ntohs(((struct sockaddr_in *)&client_addr)->sin_port));
-        
-        // fire up a pthread for each client socket
-        pthread_t thread;
-        char handleClient_args[] = {(void*)&clientFD, rootDirectory};
-        if (pthread_create(&thread, NULL, handleClient, handleClient_args) != 0) 
-        {
-            perror("pthread_create failed");
-            continue;
-        }
-
-        pthread_detach(thread);
-    }
-    close(server_socket);
-}*/
 
 // Creates a server socket and checks for any errors during creation
 void createServerSocket(int* serverSocket) 
@@ -209,7 +145,7 @@ void acceptConnections(int serverSocket, char* rootDirectory)
             continue;
         }
 
-        printf("New client accepted.\n");
+        printf("\nNew client accepted.\n");
         printf("Client details:\n");
 
         char clientIP[INET_ADDRSTRLEN];

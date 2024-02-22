@@ -13,11 +13,11 @@ void handleClient(void* args);
 
 void createServerSocket(int* serverSocket);
 
-void bindServerSocket(int serverSocket, struct sockaddr_in* serverAddress);
+void setSocketOptions(int serverSocket);
 
-void listenServerSocket(int serverSocket);
+void bindAndListen(int serverSocket, struct sockaddr_in addr);
 
-void acceptClient(int serverSocket, int* clientSocket, struct sockaddr_in* clientAddress);
+void acceptConnections(int serverSocket, char* rootdir);
 
 void openTcpServer(int argc, char *const *argv);
 

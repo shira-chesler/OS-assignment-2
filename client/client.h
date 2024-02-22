@@ -14,7 +14,7 @@ void receive_from(int clientSocket, char* message);
 
 int openClient(char* server_ip, char* path);
 
-void checkmethod(int argc, char *argv[], char* server_ip, char* path);
+void checkmethod(int argc, char *argv[]);
 
 int get_length_filename(char* path);
 
@@ -36,7 +36,7 @@ void Decode_contents(char* contents, char** decoded_contents, int client);
 
 void sendListToPoll(char* list, int client, char* path, char* server_ip);
 
-void get_into_struct(char* list, int num_files, int client, char* cwd, char* path,  struct pollfd *fds, char* server_ip);
+void get_into_struct(char* list, int num_files, int client, char* cwd, struct pollfd *fds, char*** filenames,  char*** parsed_list);
 
 int file_handler_read(int client, char* file_path, char** file_contents, char* server_ip, char* path);
 
@@ -44,6 +44,6 @@ void sendPostRequest(int client, char* path, char* file_path, char* server_ip);
 
 int file_extension_list(char* path);
 
-void parse_path(int argc, char *argv[], char** server_ip, char** route_path);
+void parse_path(char* arg_path, char** server_ip, char** route_path);
 
 #endif

@@ -36,5 +36,12 @@
 
 - The line ending used in the communication between the client and server is `CRLF` (`\r\n`).
 
+### Run Sample:
+- running the server (as written in server setup above)
+  ![Running server](server.png)
+- running POST in the client (as written in client usage above)
+  ![client POST](client_POST.png)
+- running GET in the client (as written in client usage above)
+  ![client GET](client_GET.png)
 
 
